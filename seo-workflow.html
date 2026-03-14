@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEO記事作成 AI分業ワークフロー</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0f0f13;
+    --surface: #17171e;
+    --surface2: #1e1e28;
+    --surface3: #25252f;
+    --border: #2e2e3a;
+    --border2: #3a3a48;
+    --text: #e8e8f0;
+    --text2: #9090a8;
+    --text3: #5a5a70;
+    --accent1: #7c6af7;
+    --accent1-dim: #3d3578;
+    --accent2: #f76a8c;
+    --accent3: #6af7c8;
+    --accent4: #f7c46a;
+    --step1: #5b8af5;
+    --step2: #a06af7;
+    --step3: #6af7c8;
+    --step4: #f7c46a;
+    --step1-dim: #1a2545;
+    --step2-dim: #251845;
+    --step3-dim: #0f3028;
+    --step4-dim: #302a10;
+    --radius: 10px;
+    --radius-lg: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: rgba(15,15,19,0.95);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--accent1);
+    text-transform: uppercase;
+  }
+
+  .header-meta {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar {
+    display: flex;
+    gap: 0;
+    padding: 20px 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .progress-step {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    transition: background 0.2s;
+    position: relative;
+  }
+
+  .progress-step:hover { background: var(--surface2); }
+  .progress-step.active { background: var(--surface2); }
+
+  .progress-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 60%;
+    background: var(--border);
+  }
+
+  .step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    border: 1.5px solid;
+    transition: all 0.3s;
+  }
+
+  .step-num.s1 { color: var(--step1); border-color: var(--step1); background: var(--step1-dim); }
+  .step-num.s2 { color: var(--step2); border-color: var(--step2); background: var(--step2-dim); }
+  .step-num.s3 { color: var(--step3); border-color: var(--step3); background: var(--step3-dim); }
+  .step-num.s4 { color: var(--step4); border-color: var(--step4); background: var(--step4-dim); }
+
+  .step-num.done::after { content: '✓'; }
+  .step-num.done { opacity: 0.7; }
+
+  .step-label-wrap { overflow: hidden; }
+
+  .step-label-top {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--text3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .step-label-main {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .step-label-ai {
+    font-size: 10px;
+    color: var(--text3);
+    font-family: 'Space Mono', monospace;
+    white-space: nowrap;
+  }
+
+  /* ── Main layout ── */
+  .app {
+    display: flex;
+    height: calc(100vh - 115px);
+    overflow: hidden;
+  }
+
+  /* ── Sidebar (step list) ── */
+  .sidebar {
+    width: 0;
+    overflow: hidden;
+    transition: width 0.3s;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    display: none;
+  }
+
+  /* ── Main content ── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 32px;
+  }
+
+  /* ── STEP panels ── */
+  .step-panel {
+    display: none;
+    flex-direction: column;
+    gap: 20px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .step-panel.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Step header ── */
+  .step-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .step-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .step-badge.s1 { background: var(--step1-dim); color: var(--step1); border: 1px solid var(--step1); }
+  .step-badge.s2 { background: var(--step2-dim); color: var(--step2); border: 1px solid var(--step2); }
+  .step-badge.s3 { background: var(--step3-dim); color: var(--step3); border: 1px solid var(--step3); }
+  .step-badge.s4 { background: var(--step4-dim); color: var(--step4); border: 1px solid var(--step4); }
+
+  .step-header-text h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .step-header-text p {
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    margin-top: 6px;
+    border: 1px solid;
+  }
+
+  .ai-badge.gemini { color: #34a8fb; border-color: #1a4870; background: #0a1e30; }
+  .ai-badge.chatgpt { color: #19c37d; border-color: #0a4030; background: #071e17; }
+  .ai-badge.claude  { color: #cc7c50; border-color: #4a2c1a; background: #231408; }
+  .ai-badge.multi   { color: var(--text2); border-color: var(--border2); background: var(--surface2); }
+
+  /* ── Prompt block ── */
+  .prompt-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .prompt-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .prompt-block-title {
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    color: var(--text2);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: var(--surface3);
+    color: var(--text2);
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+
+  .copy-btn:hover { border-color: var(--accent1); color: var(--accent1); background: var(--accent1-dim); }
+  .copy-btn.copied { border-color: var(--accent3); color: var(--accent3); }
+
+  .prompt-content {
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--text2);
+    white-space: pre-wrap;
+    font-family: 'Noto Sans JP', sans-serif;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  .prompt-content::-webkit-scrollbar { width: 4px; }
+  .prompt-content::-webkit-scrollbar-track { background: transparent; }
+  .prompt-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* ── Input / output areas ── */
+  .field-label {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--text3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .field-label .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .dot.s1 { background: var(--step1); }
+  .dot.s2 { background: var(--step2); }
+  .dot.s3 { background: var(--step3); }
+  .dot.s4 { background: var(--step4); }
+
+  textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    line-height: 1.7;
+    padding: 14px 16px;
+    resize: vertical;
+    transition: border-color 0.2s;
+    outline: none;
+    min-height: 120px;
+  }
+
+  textarea:focus { border-color: var(--border2); }
+  textarea::placeholder { color: var(--text3); }
+
+  textarea.input-ta  { min-height: 80px; }
+  textarea.output-ta { min-height: 200px; }
+
+  /* ── Action buttons ── */
+  .action-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Noto Sans JP', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid;
+  }
+
+  .btn-primary {
+    background: var(--accent1);
+    border-color: var(--accent1);
+    color: #fff;
+  }
+  .btn-primary:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+  .btn-secondary {
+    background: var(--surface2);
+    border-color: var(--border2);
+    color: var(--text2);
+  }
+  .btn-secondary:hover { border-color: var(--accent1); color: var(--accent1); }
+
+  .btn-danger {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text3);
+  }
+  .btn-danger:hover { border-color: #a04040; color: #e06060; }
+
+  /* ── Info cards (tips) ── */
+  .tip-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid;
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.65;
+  }
+
+  .tip-card.s1 { border-left-color: var(--step1); }
+  .tip-card.s2 { border-left-color: var(--step2); }
+  .tip-card.s3 { border-left-color: var(--step3); }
+  .tip-card.s4 { border-left-color: var(--step4); }
+
+  .tip-card strong { color: var(--text); font-weight: 500; }
+
+  /* ── Inherited data banner ── */
+  .inherit-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 4px;
+  }
+
+  .inherit-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+  }
+
+  /* ── Export area ── */
+  .export-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+  }
+
+  .export-section h3 {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+
+  .export-preview {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.7;
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* ── Character count ── */
+  .char-count {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--text3);
+    text-align: right;
+    margin-top: 4px;
+  }
+
+  /* ── Scrollbar global ── */
+  .main::-webkit-scrollbar { width: 5px; }
+  .main::-webkit-scrollbar-track { background: transparent; }
+  .main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 10px 20px;
+    border-radius: 100px;
+    font-size: 13px;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 999;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Keyword input row ── */
+  .kw-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    margin-bottom: 4px;
+  }
+
+  .kw-row input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .kw-row input:focus { border-color: var(--border2); }
+  .kw-row input::placeholder { color: var(--text3); }
+
+  .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tag:hover { border-color: #a04040; color: #e06060; }
+  .tag .tag-x { font-size: 10px; color: var(--text3); }
+
+  /* ── Section divider ── */
+  .section-title {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 14px;
+  }
+
+  /* ── Step 2 sub-sections ── */
+  .sub-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .sub-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sub-badge {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid;
+  }
+
+  .sub-badge.chatgpt { color: #19c37d; border-color: #0a4030; background: #071e17; }
+  .sub-badge.claude  { color: #cc7c50; border-color: #4a2c1a; background: #231408; }
+
+  .sub-section-body { padding: 14px 16px; }
+
+  /* ── Fade-in for tags ── */
+  @keyframes tagIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .tag { animation: tagIn 0.15s ease; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">SEO Article Workflow</div>
+  <div class="header-meta" id="kw-display">キーワード未設定</div>
+</header>
+
+<!-- Progress bar -->
+<div class="progress-bar">
+  <div class="progress-step active" id="nav-1" onclick="goStep(1)">
+    <div class="step-num s1" id="snum-1">1</div>
+    <div class="step-label-wrap">
+      <div class="step-label-top">STEP 1</div>
+      <div class="step-label-main">競合リサーチ</div>
+      <div class="step-label-ai">Gemini Pro</div>
+    </div>
+  </div>
+  <div class="progress-step" id="nav-2" onclick="goStep(2)">
+    <div class="step-num s2" id="snum-2">2</div>
+    <div class="step-label-wrap">
+      <div class="step-label-top">STEP 2</div>
+      <div class="step-label-main">記事構成</div>
+      <div class="step-label-ai">ChatGPT → Claude</div>
+    </div>
+  </div>
+  <div class="progress-step" id="nav-3" onclick="goStep(3)">
+    <div class="step-num s3" id="snum-3">3</div>
+    <div class="step-label-wrap">
+      <div class="step-label-top">STEP 3</div>
+      <div class="step-label-main">本文執筆</div>
+      <div class="step-label-ai">Claude Pro</div>
+    </div>
+  </div>
+  <div class="progress-step" id="nav-4" onclick="goStep(4)">
+    <div class="step-num s4" id="snum-4">4</div>
+    <div class="step-label-wrap">
+      <div class="step-label-top">STEP 4</div>
+      <div class="step-label-main">SEOチェック</div>
+      <div class="step-label-ai">ChatGPT</div>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="main">
+
+    <!-- =========== STEP 1 =========== -->
+    <div class="step-panel active" id="panel-1">
+      <div class="step-header">
+        <div class="step-badge s1">01</div>
+        <div class="step-header-text">
+          <h2>競合リサーチ</h2>
+          <p>上位サイトから共通見出し・不足トピック・検索意図を抽出する</p>
+          <span class="ai-badge gemini">● Gemini Pro（有料）</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">ターゲットキーワード設定</div>
+        <div class="kw-row">
+          <input type="text" id="kw-input" placeholder="例：プロテイン おすすめ 女性" onkeydown="if(event.key==='Enter')addKeyword()">
+          <button class="btn btn-secondary" onclick="addKeyword()">追加</button>
+        </div>
+        <div class="tag-list" id="tag-list"></div>
+      </div>
+
+      <div>
+        <div class="section-title">Gemini Pro へのプロンプト</div>
+        <div class="prompt-block">
+          <div class="prompt-block-header">
+            <span class="prompt-block-title">コピーしてGeminiに貼り付け</span>
+            <button class="copy-btn" onclick="copyPrompt('p1-prompt', this)">📋 コピー</button>
+          </div>
+          <div class="prompt-content" id="p1-prompt">以下のキーワードで上位10〜20サイトを検索し、競合リサーチをお願いします。
+
+【ターゲットキーワード】
+[キーワードをここに入力してください]
+
+以下の4項目を分析して出力してください：
+
+1. 【共通見出し構造】
+   - 上位サイトに共通するH2・H3の見出し一覧
+   - 出現頻度が高い順に並べる
+
+2. 【検索意図の分類】
+   - 情報収集型 / 比較検討型 / 購買決定型 のどれが主か
+   - 読者が最終的に求めていることの要約
+
+3. 【不足トピック（差別化ポイント）】
+   - 上位サイトがカバーしていない、または薄いテーマ
+   - ここを厚くすることで差別化できる箇所
+
+4. 【推奨記事の方向性】
+   - タイトル案（3パターン）
+   - 想定文字数
+   - メインターゲット読者像
+
+出力はマークダウン形式でお願いします。</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="field-label"><span class="dot s1"></span> Geminiの出力結果を貼り付け</div>
+        <textarea class="output-ta" id="s1-output" placeholder="Geminiで生成した競合リサーチの結果をここに貼り付けてください…" oninput="updateCharCount('s1-output','s1-cc'); autoSave()"></textarea>
+        <div class="char-count" id="s1-cc">0文字</div>
+      </div>
+
+      <div class="tip-card s1">
+        <strong>💡 ポイント：</strong> Geminiはリンクを直接読み込めます。「以下のURLを全て読んでから分析してください」と前置きして、上位サイトのURLをまとめて貼ると精度が上がります。
+      </div>
+
+      <div class="action-row">
+        <div></div>
+        <button class="btn btn-primary" onclick="completeStep(1)">STEP 2 へ進む →</button>
+      </div>
+    </div>
+
+    <!-- =========== STEP 2 =========== -->
+    <div class="step-panel" id="panel-2">
+      <div class="step-header">
+        <div class="step-badge s2">02</div>
+        <div class="step-header-text">
+          <h2>記事構成</h2>
+          <p>ChatGPTで論理構造を組み、Claudeで独自視点・共感を加えて磨く</p>
+          <span class="ai-badge multi">● ChatGPT（骨組み） → Claude（肉付け）</span>
+        </div>
+      </div>
+
+      <!-- STEP1からの引き継ぎ -->
+      <div>
+        <div class="section-title">STEP 1 からの引き継ぎデータ</div>
+        <div class="inherit-banner">
+          <div class="inherit-icon">↑</div>
+          <span>STEP 1（競合リサーチ）の出力が<strong>全文</strong>引き継がれています。&nbsp;<span id="s1-inherit-cc" style="font-family:'Space Mono',monospace;color:var(--step1);">0文字</span></span>
+        </div>
+      </div>
+
+      <!-- 2a: ChatGPT -->
+      <div class="sub-section">
+        <div class="sub-section-header">
+          <span class="sub-badge chatgpt">ChatGPT</span>
+          <span style="font-size:13px;font-weight:500;color:var(--text)">2a. 論理的な見出し構成を作る</span>
+        </div>
+        <div class="sub-section-body" style="display:flex;flex-direction:column;gap:14px;">
+          <div class="prompt-block">
+            <div class="prompt-block-header">
+              <span class="prompt-block-title">ChatGPTへのプロンプト</span>
+              <button class="copy-btn" onclick="copyPromptDynamic('p2a', this)">📋 コピー</button>
+            </div>
+            <div class="prompt-content" id="p2a">（STEP 1の出力結果を入力後、自動で生成されます）</div>
+          </div>
+          <div>
+            <div class="field-label"><span class="dot s2"></span> ChatGPTの出力（構成案）を貼り付け</div>
+            <textarea class="output-ta" id="s2a-output" placeholder="ChatGPTが生成した見出し構成（H2/H3）をここに貼り付け…" oninput="updateCharCount('s2a-output','s2a-cc'); autoSave()"></textarea>
+            <div class="char-count" id="s2a-cc">0文字</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2b: Claude -->
+      <div class="sub-section">
+        <div class="sub-section-header">
+          <span class="sub-badge claude">Claude</span>
+          <span style="font-size:13px;font-weight:500;color:var(--text)">2b. 独自視点・エピソードで磨く</span>
+        </div>
+        <div class="sub-section-body" style="display:flex;flex-direction:column;gap:14px;">
+          <div class="prompt-block">
+            <div class="prompt-block-header">
+              <span class="prompt-block-title">Claudeへのプロンプト</span>
+              <button class="copy-btn" onclick="copyPromptDynamic('p2b', this)">📋 コピー</button>
+            </div>
+            <div class="prompt-content" id="p2b">（ChatGPTの構成案を入力後、自動で生成されます）</div>
+          </div>
+          <div>
+            <div class="field-label"><span class="dot s2"></span> Claudeの出力（磨いた構成）を貼り付け</div>
+            <textarea class="output-ta" id="s2b-output" placeholder="Claudeが改善した最終構成案をここに貼り付け…" oninput="updateCharCount('s2b-output','s2b-cc'); autoSave()"></textarea>
+            <div class="char-count" id="s2b-cc">0文字</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tip-card s2">
+        <strong>💡 ポイント：</strong> ChatGPTは「SEO的に正しい論理順序」を指定するのがコツ。Claudeには「読者の悩みに寄り添う書き方で」と感情面を意識させましょう。
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-secondary" onclick="goStep(1)">← STEP 1 に戻る</button>
+        <button class="btn btn-primary" onclick="completeStep(2)">STEP 3 へ進む →</button>
+      </div>
+    </div>
+
+    <!-- =========== STEP 3 =========== -->
+    <div class="step-panel" id="panel-3">
+      <div class="step-header">
+        <div class="step-badge s3">03</div>
+        <div class="step-header-text">
+          <h2>本文執筆</h2>
+          <p>構成案をもとにClaude Proが一気に書き出す</p>
+          <span class="ai-badge claude">● Claude Pro（有料）</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">STEP 2 からの引き継ぎデータ</div>
+        <div class="inherit-banner">
+          <div class="inherit-icon">↑</div>
+          <span>STEP 2b（Claude磨き後の構成）が<strong>全文</strong>引き継がれています。&nbsp;<span id="s2b-inherit-cc" style="font-family:'Space Mono',monospace;color:var(--step2);">0文字</span></span>
+        </div>
+      </div>
+
+      <!-- 執筆スタイル設定 -->
+      <div>
+        <div class="section-title">執筆スタイル設定（任意）</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <div class="field-label">文体</div>
+            <select id="style-tone" onchange="autoSave()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;padding:9px 12px;outline:none;font-family:'Noto Sans JP',sans-serif;">
+              <option value="です・ます調（丁寧）">です・ます調（丁寧）</option>
+              <option value="だ・である調（権威的）">だ・である調（権威的）</option>
+              <option value="話し言葉（フレンドリー）">話し言葉（フレンドリー）</option>
+            </select>
+          </div>
+          <div>
+            <div class="field-label">想定文字数</div>
+            <select id="style-length" onchange="autoSave()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;padding:9px 12px;outline:none;font-family:'Noto Sans JP',sans-serif;">
+              <option value="3,000〜5,000文字">3,000〜5,000文字</option>
+              <option value="5,000〜8,000文字">5,000〜8,000文字</option>
+              <option value="8,000〜10,000文字">8,000〜10,000文字</option>
+              <option value="10,000文字以上">10,000文字以上</option>
+            </select>
+          </div>
+          <div>
+            <div class="field-label">ターゲット読者</div>
+            <input type="text" id="style-reader" placeholder="例：20代女性・ダイエット初心者" oninput="autoSave()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;padding:9px 12px;outline:none;font-family:'Noto Sans JP',sans-serif;">
+          </div>
+          <div>
+            <div class="field-label">メディアの個性・トーン</div>
+            <input type="text" id="style-media" placeholder="例：専門家目線で信頼感を重視" oninput="autoSave()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;padding:9px 12px;outline:none;font-family:'Noto Sans JP',sans-serif;">
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">Claude Pro へのプロンプト</div>
+        <div class="prompt-block">
+          <div class="prompt-block-header">
+            <span class="prompt-block-title">コピーしてClaudeに貼り付け</span>
+            <button class="copy-btn" onclick="copyPromptDynamic('p3', this)">📋 コピー</button>
+          </div>
+          <div class="prompt-content" id="p3">（STEP 2の構成と執筆スタイルを設定後、自動で生成されます）</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="field-label"><span class="dot s3"></span> Claudeが執筆した本文を貼り付け</div>
+        <textarea style="min-height:280px;" id="s3-output" placeholder="Claudeが書き上げた本文全体をここに貼り付け…" oninput="updateCharCount('s3-output','s3-cc'); autoSave()"></textarea>
+        <div class="char-count" id="s3-cc">0文字</div>
+      </div>
+
+      <div class="tip-card s3">
+        <strong>💡 ポイント：</strong> Claudeには「一気に全部書いて」と指示するのがコツ。途中で止まったら「続きを書いてください」で再開できます。長文の場合は見出しごとに分割して依頼するのも有効。
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-secondary" onclick="goStep(2)">← STEP 2 に戻る</button>
+        <button class="btn btn-primary" onclick="completeStep(3)">STEP 4 へ進む →</button>
+      </div>
+    </div>
+
+    <!-- =========== STEP 4 =========== -->
+    <div class="step-panel" id="panel-4">
+      <div class="step-header">
+        <div class="step-badge s4">04</div>
+        <div class="step-header-text">
+          <h2>最終SEOチェック</h2>
+          <p>タイトル量産・メタディスクリプション・キーワード漏れ・校正</p>
+          <span class="ai-badge chatgpt">● ChatGPT（無料版でOK）</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">STEP 3 からの引き継ぎデータ</div>
+        <div class="inherit-banner">
+          <div class="inherit-icon">↑</div>
+          <span>STEP 3（本文）が<strong>全文</strong>引き継がれています。&nbsp;<span id="s3-inherit-cc" style="font-family:'Space Mono',monospace;color:var(--step3);">0文字</span></span>
+        </div>
+      </div>
+
+      <!-- タスク別プロンプト -->
+      <div>
+        <div class="section-title">タスク別プロンプト（4種）</div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <!-- タイトル -->
+          <div class="prompt-block">
+            <div class="prompt-block-header">
+              <span class="prompt-block-title">① タイトル量産（10案）</span>
+              <button class="copy-btn" onclick="copyPromptDynamic('p4a', this)">📋 コピー</button>
+            </div>
+            <div class="prompt-content" id="p4a">（本文が入力されると自動生成されます）</div>
+          </div>
+
+          <!-- メタディスクリプション -->
+          <div class="prompt-block">
+            <div class="prompt-block-header">
+              <span class="prompt-block-title">② メタディスクリプション作成</span>
+              <button class="copy-btn" onclick="copyPromptDynamic('p4b', this)">📋 コピー</button>
+            </div>
+            <div class="prompt-content" id="p4b">（本文が入力されると自動生成されます）</div>
+          </div>
+
+          <!-- キーワードチェック -->
+          <div class="prompt-block">
+            <div class="prompt-block-header">
+              <span class="prompt-block-title">③ キーワード漏れチェック</span>
+              <button class="copy-btn" onclick="copyPromptDynamic('p4c', this)">📋 コピー</button>
+            </div>
+            <div class="prompt-content" id="p4c">（本文が入力されると自動生成されます）</div>
+          </div>
+
+          <!-- 校正 -->
+          <div class="prompt-block">
+            <div class="prompt-block-header">
+              <span class="prompt-block-title">④ 誤字脱字・表現の校正</span>
+              <button class="copy-btn" onclick="copyPromptDynamic('p4d', this)">📋 コピー</button>
+            </div>
+            <div class="prompt-content" id="p4d">（本文が入力されると自動生成されます）</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="field-label"><span class="dot s4"></span> 最終チェック結果・修正メモ</div>
+        <textarea style="min-height:160px;" id="s4-output" placeholder="ChatGPTのチェック結果、修正内容、採用したタイトルなどをここにメモ…" oninput="updateCharCount('s4-output','s4-cc'); autoSave()"></textarea>
+        <div class="char-count" id="s4-cc">0文字</div>
+      </div>
+
+      <div class="tip-card s4">
+        <strong>💡 ポイント：</strong> タイトルは10案以上出して、クリック率を意識した「数字入り」「疑問形」「〇〇の秘密」系を混ぜるのがおすすめ。メタディスクリプションは120文字前後が最適。
+      </div>
+
+      <!-- 最終エクスポート -->
+      <div class="export-section">
+        <h3>📄 記事データ一括エクスポート</h3>
+        <div class="export-preview" id="export-preview">（各STEPの入力が完了するとプレビューが表示されます）</div>
+        <div style="display:flex;gap:10px;margin-top:12px;">
+          <button class="btn btn-primary" onclick="exportAll()">テキストとしてコピー</button>
+          <button class="btn btn-secondary" onclick="downloadTxt()">📥 .txt ダウンロード</button>
+          <button class="btn btn-danger" onclick="if(confirm('全データをリセットしますか？'))resetAll()">🗑 リセット</button>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-secondary" onclick="goStep(3)">← STEP 3 に戻る</button>
+        <button class="btn btn-primary" onclick="completeStep(4)" style="background:var(--step4);border-color:var(--step4);color:#1a1000">🎉 完了！</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── State ───
+const state = {
+  keywords: [],
+  currentStep: 1,
+  completedSteps: [],
+  s1Output: '',
+  s2aOutput: '',
+  s2bOutput: '',
+  s3Output: '',
+  s4Output: '',
+  styleTone: 'です・ます調（丁寧）',
+  styleLength: '5,000〜8,000文字',
+  styleReader: '',
+  styleMedia: '',
+};
+
+// ─── Load from localStorage ───
+function loadState() {
+  try {
+    const saved = localStorage.getItem('seo-workflow-v1');
+    if (saved) Object.assign(state, JSON.parse(saved));
+  } catch(e) {}
+  applyState();
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('seo-workflow-v1', JSON.stringify(state));
+  } catch(e) {}
+}
+
+function autoSave() {
+  state.s1Output  = document.getElementById('s1-output').value;
+  state.s2aOutput = document.getElementById('s2a-output').value;
+  state.s2bOutput = document.getElementById('s2b-output').value;
+  state.s3Output  = document.getElementById('s3-output').value;
+  state.s4Output  = document.getElementById('s4-output').value;
+  state.styleTone   = document.getElementById('style-tone').value;
+  state.styleLength = document.getElementById('style-length').value;
+  state.styleReader = document.getElementById('style-reader').value;
+  state.styleMedia  = document.getElementById('style-media').value;
+  saveState();
+  regeneratePrompts();
+  updateExportPreview();
+}
+
+function applyState() {
+  renderTags();
+  document.getElementById('s1-output').value  = state.s1Output  || '';
+  document.getElementById('s2a-output').value = state.s2aOutput || '';
+  document.getElementById('s2b-output').value = state.s2bOutput || '';
+  document.getElementById('s3-output').value  = state.s3Output  || '';
+  document.getElementById('s4-output').value  = state.s4Output  || '';
+  document.getElementById('style-tone').value   = state.styleTone   || 'です・ます調（丁寧）';
+  document.getElementById('style-length').value = state.styleLength || '5,000〜8,000文字';
+  document.getElementById('style-reader').value = state.styleReader || '';
+  document.getElementById('style-media').value  = state.styleMedia  || '';
+  updateAllCharCounts();
+  regeneratePrompts();
+  updateExportPreview();
+  updateKwDisplay();
+  goStep(state.currentStep || 1);
+  state.completedSteps.forEach(s => markStepDone(s));
+}
+
+// ─── Navigation ───
+function goStep(n) {
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.progress-step').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + n).classList.add('active');
+  document.getElementById('nav-' + n).classList.add('active');
+  state.currentStep = n;
+  saveState();
+  regeneratePrompts();
+}
+
+function completeStep(n) {
+  if (!state.completedSteps.includes(n)) state.completedSteps.push(n);
+  markStepDone(n);
+  saveState();
+  if (n < 4) goStep(n + 1);
+  else showToast('🎉 全STEPが完了しました！お疲れ様でした。');
+}
+
+function markStepDone(n) {
+  const el = document.getElementById('snum-' + n);
+  if (el) el.classList.add('done');
+}
+
+// ─── Keywords ───
+function addKeyword() {
+  const inp = document.getElementById('kw-input');
+  const val = inp.value.trim();
+  if (!val) return;
+  if (!state.keywords.includes(val)) {
+    state.keywords.push(val);
+    renderTags();
+    updateKwDisplay();
+    saveState();
+    regeneratePrompts();
+  }
+  inp.value = '';
+}
+
+function removeKeyword(kw) {
+  state.keywords = state.keywords.filter(k => k !== kw);
+  renderTags();
+  updateKwDisplay();
+  saveState();
+  regeneratePrompts();
+}
+
+function renderTags() {
+  const list = document.getElementById('tag-list');
+  list.innerHTML = state.keywords.map(k =>
+    `<span class="tag" onclick="removeKeyword('${k.replace(/'/g,"\\'")}')">
+      ${k} <span class="tag-x">✕</span>
+    </span>`
+  ).join('');
+}
+
+function updateKwDisplay() {
+  const el = document.getElementById('kw-display');
+  el.textContent = state.keywords.length
+    ? state.keywords.join(' / ')
+    : 'キーワード未設定';
+}
+
+// ─── Prompt generation ───
+function kw() {
+  return state.keywords.length ? state.keywords.join('、') : '（キーワードを設定してください）';
+}
+
+function truncate(text) {
+  if (!text) return '（未入力）';
+  return text;
+}
+
+function regeneratePrompts() {
+  // STEP 1 prompt (static with keyword injection)
+  const p1 = `以下のキーワードで上位10〜20サイトを検索し、競合リサーチをお願いします。
+
+【ターゲットキーワード】
+${kw()}
+
+以下の4項目を分析して出力してください：
+
+1. 【共通見出し構造】
+   - 上位サイトに共通するH2・H3の見出し一覧
+   - 出現頻度が高い順に並べる
+
+2. 【検索意図の分類】
+   - 情報収集型 / 比較検討型 / 購買決定型 のどれが主か
+   - 読者が最終的に求めていることの要約
+
+3. 【不足トピック（差別化ポイント）】
+   - 上位サイトがカバーしていない、または薄いテーマ
+   - ここを厚くすることで差別化できる箇所
+
+4. 【推奨記事の方向性】
+   - タイトル案（3パターン）
+   - 想定文字数
+   - メインターゲット読者像
+
+出力はマークダウン形式でお願いします。`;
+  document.getElementById('p1-prompt').textContent = p1;
+
+  // STEP 2a: ChatGPT
+  const s1 = state.s1Output || '';
+  const p2a = `SEO記事の見出し構成を作成してください。
+
+【ターゲットキーワード】
+${kw()}
+
+【競合リサーチ結果（STEP 1）】
+${truncate(s1)}
+
+上記をもとに、以下の条件で見出し構成を作ってください：
+
+条件：
+- H2は5〜7個、各H2の下にH3を2〜4個
+- 検索意図を最初から最後まで満たす論理的な順序
+- 読者の疑問が自然に解決されるストーリー構成
+- 競合と被りすぎず、差別化できる切り口を入れる
+- 各見出しの後に「このセクションで伝えること」を1行で補足
+
+出力はマークダウン形式（# H1 / ## H2 / ### H3）でお願いします。`;
+  document.getElementById('p2a').textContent = p2a;
+
+  // STEP 2b: Claude
+  const s2a = state.s2aOutput || '';
+  const p2b = `以下の見出し構成に、読者の心に刺さる独自視点とエピソードを加えて磨いてください。
+
+【ターゲットキーワード】
+${kw()}
+
+【ChatGPTが作成した見出し構成】
+${truncate(s2a)}
+
+改善のポイント：
+- 各H2・H3に「読者が感じる悩み・不安・期待」を1行でコメント追加
+- 差別化できる独自の視点や体験談の挿入ポイントを提案
+- 「この記事を読み終えた読者がどう変わるか」のゴールを明確にする
+- 冒頭の導入（リード文）の骨子案を100字程度で提案
+- 必要なら見出しの言葉を「読者が検索しそうな言葉」に言い換える
+
+最終的に「これで記事を書こう」と思える完成度にしてください。`;
+  document.getElementById('p2b').textContent = p2b;
+
+  // STEP 3: Claude
+  const s2b = state.s2bOutput || '';
+  const tone   = document.getElementById('style-tone')?.value   || state.styleTone   || 'です・ます調（丁寧）';
+  const length  = document.getElementById('style-length')?.value || state.styleLength || '5,000〜8,000文字';
+  const reader  = document.getElementById('style-reader')?.value || state.styleReader || '（未設定）';
+  const media   = document.getElementById('style-media')?.value  || state.styleMedia  || '（未設定）';
+  const p3 = `以下の構成をもとに、SEO記事の本文を一気に書いてください。
+
+【ターゲットキーワード】
+${kw()}
+
+【記事構成（STEP 2）】
+${truncate(s2b)}
+
+【執筆条件】
+- 文体：${tone}
+- 文字数：${length}
+- ターゲット読者：${reader}
+- メディアのトーン：${media}
+
+執筆ルール：
+- AIっぽい硬い表現を避け、自然で読みやすい日本語で書く
+- 各H2セクションの冒頭は読者の共感を引く1文から始める
+- 具体例・数字・エピソードを積極的に入れる
+- 箇条書きと本文をバランスよく使い、読み飛ばしやすい構成に
+- キーワード（${kw()}）は自然な頻度で本文に散りばめる
+- 最後に「まとめ」セクションを設け、読者へのアクションを促す
+
+途中で止まらず、最後まで一気に書き切ってください。`;
+  document.getElementById('p3').textContent = p3;
+
+  // STEP 4
+  const s3 = state.s3Output || '';
+  const snippet = truncate(s3);
+  const p4a = `以下の記事のタイトルを10案作成してください。
+
+【ターゲットキーワード】
+${kw()}
+
+【記事本文（冒頭）】
+${snippet}
+
+タイトル案の条件：
+- 28〜32文字を目安
+- 数字入り（例：〇選、〇ステップ）を3案以上
+- 疑問形（〜？）を2案以上
+- 感情に訴えるもの（「知らないと損」「実は〜」等）を2案以上
+- 出力は番号付きリストで`;
+  document.getElementById('p4a').textContent = p4a;
+
+  const p4b = `以下の記事のメタディスクリプションを3パターン作成してください。
+
+【ターゲットキーワード】
+${kw()}
+
+【記事本文（冒頭）】
+${snippet}
+
+条件：
+- 各120文字前後（検索結果に最適な長さ）
+- キーワードを自然に含める
+- クリックしたくなる価値提示（「〜がわかる」「〜できる」）を入れる
+- 3パターンとも異なるアプローチで作る`;
+  document.getElementById('p4b').textContent = p4b;
+
+  const p4c = `以下の記事でSEOキーワードの配置をチェックしてください。
+
+【メインキーワード】
+${kw()}
+
+【記事本文】
+${snippet}
+
+チェック項目：
+1. メインキーワードの出現頻度（理想は全体の1〜2%）
+2. キーワードが入っていない重要セクションはないか
+3. タイトル・リード文・まとめにキーワードが入っているか
+4. 共起語・関連語で追加すべき言葉の提案
+5. 過剰なキーワード詰め込みがないか（ペナルティリスク）
+
+改善すべき箇所は具体的に指摘してください。`;
+  document.getElementById('p4c').textContent = p4c;
+
+  const p4d = `以下の記事の校正をお願いします。
+
+【記事本文】
+${snippet}
+
+チェック項目：
+1. 誤字・脱字・変換ミス
+2. 句読点の使い方（読みやすいか）
+3. 表記の揺れ（例：「ウェブ」と「Web」が混在）
+4. 文の長さ（1文が60字超えたら分割を提案）
+5. 受動態の多用（能動態への言い換え提案）
+6. AI特有の不自然な表現のリストアップ
+
+修正案は「原文 → 修正案」の形式で出力してください。`;
+  document.getElementById('p4d').textContent = p4d;
+
+  updateExportPreview();
+
+  // 引き継ぎバナーの文字数更新
+  const cc1  = document.getElementById('s1-inherit-cc');
+  const cc2b = document.getElementById('s2b-inherit-cc');
+  const cc3  = document.getElementById('s3-inherit-cc');
+  if (cc1)  cc1.textContent  = (state.s1Output  || '').length.toLocaleString() + '文字';
+  if (cc2b) cc2b.textContent = (state.s2bOutput || '').length.toLocaleString() + '文字';
+  if (cc3)  cc3.textContent  = (state.s3Output  || '').length.toLocaleString() + '文字';
+}
+
+// ─── Copy helpers ───
+function copyPrompt(id, btn) {
+  const text = document.getElementById(id).textContent;
+  copyToClipboard(text, btn);
+}
+
+function copyPromptDynamic(id, btn) {
+  const text = document.getElementById(id).textContent;
+  copyToClipboard(text, btn);
+}
+
+function copyToClipboard(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ コピー済み';
+    btn.classList.add('copied');
+    showToast('クリップボードにコピーしました');
+    setTimeout(() => {
+      btn.textContent = '📋 コピー';
+      btn.classList.remove('copied');
+    }, 2000);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = '✓ コピー済み';
+    btn.classList.add('copied');
+    showToast('コピーしました');
+    setTimeout(() => {
+      btn.textContent = '📋 コピー';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// ─── Char count ───
+function updateCharCount(taId, ccId) {
+  const ta = document.getElementById(taId);
+  const cc = document.getElementById(ccId);
+  if (ta && cc) cc.textContent = ta.value.length.toLocaleString() + '文字';
+}
+
+function updateAllCharCounts() {
+  updateCharCount('s1-output', 's1-cc');
+  updateCharCount('s2a-output', 's2a-cc');
+  updateCharCount('s2b-output', 's2b-cc');
+  updateCharCount('s3-output', 's3-cc');
+  updateCharCount('s4-output', 's4-cc');
+}
+
+// ─── Export ───
+function buildExportText() {
+  const d = new Date().toLocaleDateString('ja-JP');
+  const kws = state.keywords.join('、') || '未設定';
+  const lines = [
+    `====================================`,
+    `SEO記事作成ワークフロー 出力レポート`,
+    `作成日：${d}`,
+    `キーワード：${kws}`,
+    `====================================`,
+    ``,
+    `■ STEP 1 ｜競合リサーチ（Gemini Pro）`,
+    `────────────────────────────`,
+    state.s1Output || '（未入力）',
+    ``,
+    `■ STEP 2a ｜見出し構成（ChatGPT）`,
+    `────────────────────────────`,
+    state.s2aOutput || '（未入力）',
+    ``,
+    `■ STEP 2b ｜磨いた構成（Claude）`,
+    `────────────────────────────`,
+    state.s2bOutput || '（未入力）',
+    ``,
+    `■ STEP 3 ｜本文（Claude Pro）`,
+    `────────────────────────────`,
+    state.s3Output || '（未入力）',
+    ``,
+    `■ STEP 4 ｜SEOチェックメモ（ChatGPT）`,
+    `────────────────────────────`,
+    state.s4Output || '（未入力）',
+    ``,
+    `====================================`,
+    `Generated by SEO Article Workflow`,
+    `====================================`,
+  ];
+  return lines.join('\n');
+}
+
+function updateExportPreview() {
+  document.getElementById('export-preview').textContent = buildExportText();
+}
+
+function exportAll() {
+  const text = buildExportText();
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('📋 全データをコピーしました！');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('コピーしました！');
+  });
+}
+
+function downloadTxt() {
+  const text = buildExportText();
+  const kws  = (state.keywords[0] || 'article').replace(/[^a-zA-Z0-9\u3040-\u9FFF]/g, '_');
+  const d    = new Date().toISOString().slice(0,10);
+  const filename = `seo-workflow_${kws}_${d}.txt`;
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📥 ダウンロードしました');
+}
+
+function resetAll() {
+  localStorage.removeItem('seo-workflow-v1');
+  location.reload();
+}
+
+// ─── Toast ───
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ─── Init ───
+loadState();
+document.getElementById('kw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addKeyword();
+});
+
+// Style inputs live update prompts
+['style-tone','style-length','style-reader','style-media'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    autoSave();
+  });
+});
+
+// Auto-save textarea inputs
+['s1-output','s2a-output','s2b-output','s3-output','s4-output'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => autoSave());
+});
+</script>
+</body>
+</html>

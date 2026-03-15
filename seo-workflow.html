@@ -409,7 +409,7 @@ textarea:focus{border-color:var(--border2);}textarea::placeholder{color:var(--te
     <div class="apikey-panel" id="apikey-panel"><input type="password" id="api-key-input" placeholder="sk-ant-..." oninput="autoSave()"><div class="apikey-note">※ APIキーはlocalStorageに保存されます。共有PCでの使用に注意してください。</div></div>
   </div>
   <div class="gen-result" id="generated-result">
-    <div class="result-header"><span>✦ 生成完了 — Stage 1 → 2 → 3 通過済み</span><button class="copy-btn" onclick="copyGeneratedResult()">📋 コピー</button></div>
+    <div class="result-header"><span>✦ 生成完了 — Stage 1 → 2 → 3 通過済み</span><div style="display:flex;gap:6px;"><button class="copy-btn" onclick="copyGeneratedResult()">📋 コピー</button><button class="copy-btn" onclick="downloadArticleTxt()" style="border-color:var(--s9);color:var(--s9);">📥 TXTで保存</button></div></div>
     <div class="result-body" id="result-body"></div>
     <div class="stage-log"><div class="stage-log-hd" onclick="toggleLog('log-s1')">▶ Stage 1 内容設計ログ</div><div class="stage-log-bd" id="log-s1"></div></div>
     <div class="stage-log"><div class="stage-log-hd" onclick="toggleLog('log-s2')">▶ Stage 2 文章化ログ</div><div class="stage-log-bd" id="log-s2"></div></div>
@@ -1245,6 +1245,18 @@ async function generateArticle() {
 
 function copyGeneratedResult() {
   navigator.clipboard.writeText(document.getElementById('result-body').textContent).then(()=>showToast('📋 コピーしました'));
+}
+function downloadArticleTxt() {
+  const text = document.getElementById('result-body').textContent;
+  if (!text) { showToast('⚠️ 生成された本文がありません'); return; }
+  const kws = (state.keywords[0]||'article').replace(/[^a-zA-Z0-9\u3040-\u9FFF]/g,'_');
+  const d = new Date().toISOString().slice(0,10);
+  const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'article_'+kws+'_'+d+'.txt';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('📥 本文をTXTで保存しました');
 }
 function copyById(id,btn) {
   const text=document.getElementById(id).textContent;

@@ -493,7 +493,7 @@ const STAGE1_PROMPT = `あなたは通信ジャンルのSEO記事の構成・内
 
 設計結果は「伝えること」と「除外すること」を両方箇条書きで出力してください。`;
 
-const STAGE2_PROMPT = `あなたは通信ジャンルのSEO記事ライターです。
+const STAGE2_PROMPT_BASE = `あなたは通信ジャンルのSEO記事ライターです。
 
 【ステージ2：文章化】
 ステージ1で設計された内容を、以下のルールに従って文章に変換してください。
@@ -518,11 +518,52 @@ const STAGE2_PROMPT = `あなたは通信ジャンルのSEO記事ライターで
 - 結論→理由→具体例→補足の順
 - H2直下の文章は必ず出力する
 - 比較テーブルがある場合は先に表、直後にまとめの一文
+- 「よくある質問」セクションのQ&Aは必ず5個書くこと
+- まとめセクションのH2見出しは「まとめ」のみ（キーワードは付けない）
 
 出力形式：
 - H2は ## 、H3は ### で出力
 - 見出しの前に必ず空行を入れる
 - 見出しと本文の間に区切り線（---）を入れる`;
+
+function buildStage2Prompt() {
+  let prompt = STAGE2_PROMPT_BASE;
+  const styleGuide = state.s3;
+  if (!styleGuide || styleGuide === '（未入力）') return prompt;
+
+  // テンプレート部分を抽出してプロンプトに追加
+  const introMatch = styleGuide.match(/template:\s*\|?\s*\n([\s\S]*?)(?=\n\s{0,4}\w|\n\s*\d+\.|$)/m);
+  const faqMatch   = styleGuide.match(/(?:よくある質問|FAQ)[^\n]*\n[\s\S]*?template:\s*\|?\s*\n([\s\S]*?)(?=\n\s{0,4}\w|\n\s*\d+\.|$)/m);
+  const summaryMatch = styleGuide.match(/(?:まとめ|summary)[^\n]*\n[\s\S]*?template:\s*\|?\s*\n([\s\S]*?)(?=\n\s{0,4}\w|\n\s*\d+\.|$)/m);
+
+  // templateブロックをインデント除去してクリーンに取得するヘルパー
+  const cleanTemplate = raw => {
+    if (!raw) return null;
+    return raw.split('\n')
+      .map(l => l.replace(/^\s{6}/, '')) // YAMLの深いインデントを除去
+      .join('\n').trim();
+  };
+
+  const introTpl   = cleanTemplate(introMatch?.[1]);
+  const faqTpl     = cleanTemplate(faqMatch?.[1]);
+  const summaryTpl = cleanTemplate(summaryMatch?.[1]);
+
+  if (introTpl || faqTpl || summaryTpl) {
+    prompt += '\n\n━━━━━━━━━━━━━━━━━━━━━━\n【メディアスタイルガイド テンプレート指示（必ず従うこと）】\n━━━━━━━━━━━━━━━━━━━━━━';
+
+    if (introTpl) {
+      prompt += `\n\n■ 導入文（記事冒頭）は以下のテンプレートを必ず使用すること：\n${introTpl}\n※ {} の部分を今回の記事内容に合わせて埋めること。構造・語順・「」の使い方は変えないこと。`;
+    }
+    if (faqTpl) {
+      prompt += `\n\n■ よくある質問（FAQ）の各Q&Aは以下のテンプレートを必ず使用すること（5個）：\n${faqTpl}\n※ {} の部分を今回の記事内容に合わせて埋めること。`;
+    }
+    if (summaryTpl) {
+      prompt += `\n\n■ まとめセクションは以下のテンプレートを必ず使用すること：\n${summaryTpl}\n※ {} の部分を今回の記事内容に合わせて埋めること。箇条書き（・）の形式は変えないこと。\n※ まとめセクションのH2見出しは「まとめ」のみ（キーワードは付けない）。`;
+    }
+  }
+
+  return prompt;
+}
 
 const STAGE3_PROMPT = `あなたはプロの日本語編集者です。
 
@@ -769,7 +810,7 @@ ${s1}
 5. よくある質問（FAQ）セクションのスタイル
    - 質問の書き方・文体（「〜ですか？」「〜できますか？」など）
    - 回答の長さ・構成（何文程度で答えているか）
-   - Q&Aの数（記事あたりの傾向）
+   - Q&Aの数（記事あたり5個を標準とする）
    - 実際の記事から抽出したQ&Aの例（1〜2例）
    - 次の記事に使えるQAテンプレート（穴埋め形式で）
 
@@ -786,8 +827,9 @@ ${s1}
 8. 記事構成のルール
    - 記事末尾の2つのH2見出しは必ず以下の順番・形式で終わること：
      1. 「{キーワード}によくある質問」
-     2. 「{キーワード}のまとめ」
+     2. 「まとめ」
    - {キーワード} は各記事のメインKWに置き換える
+   - 「よくある質問」セクションのQ&A数は必ず5個とすること
 
 9. このメディアの「らしさ」まとめ
    - 一言でこのメディアの文体を表すキャッチフレーズ
@@ -1015,7 +1057,7 @@ integrated_knowledge:
   const baseInfo = `【ターゲットキーワード】\n${kwStr}\n\n【改善済み記事構成（STEP 6）】\n${s6}${kouki}${styleGuide}${integratedKnowledge}\n\n【執筆条件】\n- 文体：${tone}\n- 文字数：${len}\n- ターゲット読者：${reader}\n- 補足トーン：${media}`;
 
   document.getElementById('p9-s1').textContent=STAGE1_PROMPT+'\n\n---\n以下の記事情報をもとに内容を設計してください。\n\n'+baseInfo;
-  document.getElementById('p9-s2').textContent=STAGE2_PROMPT+'\n\n---\n【Stage 1の設計結果】\n（Stage 1の出力をここに貼り付けてください）\n\n【元の記事情報（ファクトチェック用）】\n'+baseInfo;
+  document.getElementById('p9-s2').textContent=buildStage2Prompt()+'\n\n---\n【Stage 1の設計結果】\n（Stage 1の出力をここに貼り付けてください）\n\n【元の記事情報（ファクトチェック用）】\n'+baseInfo;
   document.getElementById('p9-s3').textContent=STAGE3_PROMPT+'\n\n---\n【Stage 2の文章】\n（Stage 2の出力をここに貼り付けてください）\n\n【元の記事情報（ファクトチェック用）】\n'+baseInfo;
 
   // p10 SEOレビュー
@@ -1133,7 +1175,7 @@ async function generateArticle() {
     const s1r=await callClaude(STAGE1_PROMPT,'以下の記事情報をもとに内容を設計してください。\n\n'+baseInfo,apiKey);
     document.getElementById('log-s1').textContent=s1r;
     setGenStage(2);
-    const s2r=await callClaude(STAGE2_PROMPT,`【ステージ1で設計された内容】\n${s1r}\n\n【元の記事情報（ファクトチェック用）】\n${baseInfo}`,apiKey);
+    const s2r=await callClaude(buildStage2Prompt(),`【ステージ1で設計された内容】\n${s1r}\n\n【元の記事情報（ファクトチェック用）】\n${baseInfo}`,apiKey);
     document.getElementById('log-s2').textContent=s2r;
     setGenStage(3);
     const final=await callClaude(STAGE3_PROMPT,`【ステージ2で生成された文章】\n${s2r}\n\n【元の記事情報（ファクトチェック用）】\n${baseInfo}`,apiKey);

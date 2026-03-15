@@ -1345,7 +1345,7 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 // ── Init ──
 loadState();
-document.getElementById('kw-input').addEventListener('keydown',e=>{if(e.key==='Enter')addKeyword();});
+document.getElementById('kw-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)addKeyword();});
 ['style-tone','style-length','style-reader','style-media'].forEach(id=>document.getElementById(id).addEventListener('input',autoSave));
 ['s0-out','s1-out','s2-out','s3-out','s4-out','s5-out','s6-out','s7-out'].forEach(id=>document.getElementById(id).addEventListener('input',autoSave));
 document.getElementById('api-key-input').addEventListener('input',autoSave);

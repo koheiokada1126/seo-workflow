@@ -844,6 +844,7 @@ const state = {
   s0:'', s1:'', s2:'', s3:'', s4:'', s5:'', s6:'', s7:'',
   styleTone:'です・ます調（丁寧）', styleLength:'5,000〜8,000文字',
   styleReader:'', styleMedia:'', apiKey:'',
+  step5Enabled: false,
 };
 
 function loadState() {
@@ -875,6 +876,7 @@ function applyState() {
   document.getElementById('style-media').value  = state.styleMedia  || '';
   document.getElementById('api-key-input').value = state.apiKey || '';
   updateAllCC(); regeneratePrompts(); updateExportPreview(); updateKwDisplay();
+  applyStep5UI();
   goStep(state.currentStep || 0);
   state.completedSteps.forEach(s => markDone(s));
 }
@@ -912,6 +914,35 @@ function renderTags() {
 function updateKwDisplay() {
   document.getElementById('kw-display').textContent=state.keywords.length?state.keywords.join(' / '):'キーワード未設定';
 }
+function toggleStep5() {
+  state.step5Enabled = !state.step5Enabled;
+  saveState();
+  applyStep5UI();
+  regeneratePrompts();
+}
+
+function applyStep5UI() {
+  const on = state.step5Enabled;
+  // トグルの見た目
+  const tog = document.getElementById('s5-toggle');
+  const knob = document.getElementById('s5-knob');
+  const label = document.getElementById('s5-toggle-label');
+  if (tog) tog.style.background = on ? 'var(--s5)' : 'var(--border2)';
+  if (knob) { knob.style.left = on ? '22px' : '3px'; knob.style.background = on ? '#1a2000' : 'var(--text3)'; }
+  if (label) label.textContent = on ? 'ON — 使用する' : 'OFF — スキップ';
+  // コンテンツ表示切替
+  const content = document.getElementById('s5-content');
+  const skip = document.getElementById('s5-skip-notice');
+  const badge = document.getElementById('s5-badge');
+  const navBadge = document.getElementById('sn-5');
+  if (content) content.style.display = on ? 'flex' : 'none';
+  if (skip) skip.style.display = on ? 'none' : 'block';
+  // ナビバッジをグレーアウト（OFF時）
+  if (navBadge) navBadge.style.opacity = on ? '1' : '0.4';
+  if (badge) badge.style.opacity = on ? '1' : '0.5';
+}
+
+
 function toggleApiKey() {
   const p=document.getElementById('apikey-panel'), a=document.getElementById('apikey-arrow');
   const open=p.style.display==='block';

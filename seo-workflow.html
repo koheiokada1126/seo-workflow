@@ -758,20 +758,38 @@ ${s1}
    - H2・H3の書き方のクセ（結論先出し / 問いかけ型 / 体言止めなど）
    - 見出しの文字数の傾向
 
-4. 導入文・まとめの特徴
-   - 記事冒頭の書き出しパターン
-   - まとめセクションの締め方
+4. 導入文のスタイル
+   - 書き出しのパターン（共感型 / 問いかけ型 / 結論先出し型 など）
+   - 導入文の長さ・構成（何文で何を伝えているか）
+   - 読者の悩み・状況をどう言語化しているか
+   - この記事でわかることの伝え方
+   - 実際の記事から抽出した導入文の例文（1〜2例）
+   - 次の記事に使える導入文テンプレート（穴埋め形式で）
 
-5. 禁止表現・避けるべきパターン
+5. よくある質問（FAQ）セクションのスタイル
+   - 質問の書き方・文体（「〜ですか？」「〜できますか？」など）
+   - 回答の長さ・構成（何文程度で答えているか）
+   - Q&Aの数（記事あたりの傾向）
+   - 実際の記事から抽出したQ&Aの例（1〜2例）
+   - 次の記事に使えるQAテンプレート（穴埋め形式で）
+
+6. まとめセクションのスタイル
+   - まとめの構成パターン（箇条書き / 文章 / 表 など）
+   - 締めの文の書き方（行動喚起 / 読者への言葉 / 次のステップ提示 など）
+   - まとめセクションの長さの傾向
+   - 実際の記事から抽出したまとめ文の例（1〜2例）
+   - 次の記事に使えるまとめテンプレート（穴埋め形式で）
+
+7. 禁止表現・避けるべきパターン
    - このメディアで使われていない表現や構成
 
-6. 記事構成のルール
+8. 記事構成のルール
    - 記事末尾の2つのH2見出しは必ず以下の順番・形式で終わること：
      1. 「{キーワード}によくある質問」
      2. 「{キーワード}のまとめ」
    - {キーワード} は各記事のメインKWに置き換える
 
-7. このメディアの「らしさ」まとめ
+9. このメディアの「らしさ」まとめ
    - 一言でこのメディアの文体を表すキャッチフレーズ
 
 出力はYAML形式でお願いします。`;
@@ -877,7 +895,7 @@ sections:
 上記のYAML形式を厳守して出力してください。`;
 
   // p6 構成改善
-  document.getElementById('p6').textContent=`以下の記事構成を、読者理解と情報整理の観点から最適化してください。
+  document.getElementById('p6').textContent=`以下の記事構成を最適化し、あわせてタイトルの改善・選定も行ってください。
 
 【ターゲットキーワード】
 ${kwStr}
@@ -885,9 +903,27 @@ ${kwStr}
 【検索意図】
 ${s0}
 
-【ChatGPTが設計した記事構成】
+【ChatGPTが設計した記事構成・タイトル案】
 ${s5}
 ${styleNote}
+━━━━━━━━━━━━━━━━━━━━━━
+① タイトル改善・選定
+━━━━━━━━━━━━━━━━━━━━━━
+既存のタイトル案を評価し、以下の観点で改善・選定してください。
+
+評価の観点：
+- キーワードが自然に含まれているか
+- 読者の悩み・ベネフィットが伝わるか
+- クリックしたくなる表現になっているか
+- 28〜35文字の範囲に収まっているか
+
+出力：
+- 既存案の中から採用推奨1案を選び、選定理由を添える
+- 改善案を最大2案追加する（既存案より明らかに良い場合のみ）
+
+━━━━━━━━━━━━━━━━━━━━━━
+② 記事構成の改善
+━━━━━━━━━━━━━━━━━━━━━━
 改善の観点：
 1. 見出しの論理順序が正しいか
 2. 情報の重複がないか
@@ -897,6 +933,15 @@ ${styleNote}
 6. メディアスタイルガイドの記事構成ルールに従っているか（末尾のH2順序など）
 
 出力形式（YAML・厳守）：
+
+titles:
+  - title: "採用推奨タイトル"
+    reason: "選定理由"
+    selected: true
+  - title: "改善案①（任意）"
+    reason: "改善ポイント"
+    selected: false
+
 sections:
   - h2: "H2見出し"
     purpose: "このセクションで伝えること"
@@ -1165,7 +1210,7 @@ let dragSrcH2 = null, dragSrcH3 = null, dragSrcH2ForH3 = null;
 function parseYaml(text) {
   const result = { titles: [], sections: [] };
   const lines = text.split('\n');
-  let mode = null, curSec = null;
+  let mode = null, curSec = null, curTitle = null;
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const line = raw.trimEnd();
@@ -1174,9 +1219,16 @@ function parseYaml(text) {
     if (!stripped || stripped.startsWith('#')) continue;
     if (stripped === 'titles:') { mode = 'titles'; continue; }
     if (stripped === 'sections:') { mode = 'sections'; continue; }
+
     if (mode === 'titles') {
-      const m = stripped.match(/^-\s+"?(.+?)"?\s*$/);
-      if (m) result.titles.push(m[1].replace(/^"|"$/g,''));
+      // 新形式: - title: "..." / reason: "..." / selected: true
+      const newTitle = stripped.match(/^-\s+title:\s*"?(.+?)"?\s*$/);
+      if (newTitle) { curTitle = { text: newTitle[1].replace(/^"|"$/g,''), selected: false }; result.titles.push(curTitle); continue; }
+      const selM = stripped.match(/^selected:\s*(true|false)/);
+      if (selM && curTitle) { curTitle.selected = selM[1]==='true'; continue; }
+      // 旧形式: - "タイトル"
+      const oldTitle = stripped.match(/^-\s+"?(.+?)"?\s*$/);
+      if (oldTitle && !stripped.startsWith('- title:')) result.titles.push({ text: oldTitle[1].replace(/^"|"$/g,''), selected: false });
     }
     if (mode === 'sections') {
       const h2m = stripped.match(/^-?\s*h2:\s*"?(.+?)"?\s*$/);
@@ -1185,6 +1237,10 @@ function parseYaml(text) {
       if (h3m && curSec && indent >= 4) { curSec.h3s.push(h3m[1].replace(/^"|"$/g,'')); }
     }
   }
+  // selected:trueのものを先頭にし、selectedTitleインデックスを設定
+  const selIdx = result.titles.findIndex(t => t.selected);
+  result.selectedTitle = selIdx >= 0 ? selIdx : 0;
+  result.titles = result.titles.map(t => t.text || t); // 文字列に統一
   return result;
 }
 
@@ -1193,7 +1249,7 @@ function parseAndRenderEditor() {
   if (!text) return;
   const parsed = parseYaml(text);
   if (parsed.titles.length === 0 && parsed.sections.length === 0) return;
-  editorData = { titles: parsed.titles.length ? parsed.titles : [], selectedTitle: 0, sections: parsed.sections };
+  editorData = { titles: parsed.titles.length ? parsed.titles : [], selectedTitle: parsed.selectedTitle || 0, sections: parsed.sections };
   renderEditor();
   document.getElementById('s6-editor').style.display = 'flex';
 }

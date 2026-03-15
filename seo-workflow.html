@@ -487,33 +487,49 @@ textarea:focus{border-color:var(--border2);} textarea::placeholder{color:var(--t
 
 <!-- ======= STEP 5 ======= -->
 <div class="step-panel" id="panel-5">
-  <div class="step-header">
-    <div class="step-badge sb5">05</div>
-    <div class="step-header-text">
+  <div class="step-header" style="flex-wrap:wrap;gap:14px;">
+    <div class="step-badge sb5" id="s5-badge">05</div>
+    <div class="step-header-text" style="flex:1;">
       <h2>ナレッジ収集</h2>
       <p>記事で使用する具体データを収集し、JSON形式の構造化データとして整理する。</p>
       <span class="ai-badge ai-gemini">● Gemini</span>
     </div>
-  </div>
-
-  <div>
-    <div class="section-title">Gemini へのプロンプト</div>
-    <div class="prompt-block">
-      <div class="prompt-block-header">
-        <span class="prompt-block-title">コピーして Gemini に貼り付け</span>
-        <button class="copy-btn" onclick="copyById('p5',this)">📋 コピー</button>
+    <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:11px;font-family:'Space Mono',monospace;color:var(--text3);" id="s5-toggle-label">OFF — スキップ</span>
+        <div id="s5-toggle" onclick="toggleStep5()" style="width:42px;height:24px;border-radius:12px;background:var(--border2);border:1px solid var(--border2);cursor:pointer;position:relative;transition:background 0.2s;">
+          <div id="s5-knob" style="position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--text3);transition:all 0.2s;"></div>
+        </div>
       </div>
-      <div class="prompt-content" id="p5">（キーワードが設定されると自動生成されます）</div>
+      <div style="font-size:10px;font-family:'Space Mono',monospace;color:var(--text3);">料金・キャンペーン系でON</div>
     </div>
   </div>
 
-  <div>
-    <div class="field-label"><span class="dot d5"></span> Geminiの出力を貼り付け（JSON形式のナレッジデータ）</div>
-    <textarea class="ta-out" id="s5-out" placeholder='{"services":[{"name":"サービス名","price":"月額〇〇円","speed":"最大〇〇Gbps",...}]}' oninput="updateCC('s5-out','s5-cc');autoSave()"></textarea>
-    <div class="char-count" id="s5-cc">0文字</div>
+  <div id="s5-skip-notice">
+    <div class="tip-card" style="background:var(--surface2);border-left:3px solid var(--text3);border-color:var(--border);">
+      <strong>ℹ️ スキップ中：</strong> Knowクエリなどデータ不要な記事はこのままSTEP 6へ進んでください。ナレッジデータは生成プロンプトに含まれません。
+    </div>
   </div>
 
-  <div class="tip-card tc5"><strong>💡 重要性：</strong> 正確なデータ・具体的な数字が信頼性を高める。ナレッジを構造化することで情報精度・AI生成の正確性・更新のしやすさが向上する。</div>
+  <div id="s5-content" style="display:none;flex-direction:column;gap:20px;">
+    <div>
+      <div class="section-title">Gemini へのプロンプト</div>
+      <div class="prompt-block">
+        <div class="prompt-block-header">
+          <span class="prompt-block-title">コピーして Gemini に貼り付け</span>
+          <button class="copy-btn" onclick="copyById('p5',this)">📋 コピー</button>
+        </div>
+        <div class="prompt-content" id="p5">（キーワードが設定されると自動生成されます）</div>
+      </div>
+    </div>
+    <div>
+      <div class="field-label"><span class="dot d5"></span> Geminiの出力を貼り付け（JSON形式のナレッジデータ）</div>
+      <textarea class="ta-out" id="s5-out" placeholder='{"services":[{"name":"サービス名","price":"月額〇〇円","speed":"最大〇〇Gbps",...}]}' oninput="updateCC('s5-out','s5-cc');autoSave()"></textarea>
+      <div class="char-count" id="s5-cc">0文字</div>
+    </div>
+    <div class="tip-card tc5"><strong>💡 使いどき：</strong> 料金・キャンペーン・スペック比較など具体的な数値が必要な記事で使用。Knowクエリ（知識解説型）はスキップしてOK。</div>
+  </div>
+
   <div class="action-row">
     <button class="btn btn-secondary" onclick="goStep(4)">← STEP 4 に戻る</button>
     <button class="btn btn-primary" onclick="completeStep(5)">STEP 6 へ進む →</button>
